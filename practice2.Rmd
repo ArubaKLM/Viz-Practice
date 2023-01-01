@@ -7,6 +7,8 @@ library(tidyverse)
 library(googlesheets4)
 library(base)
 library(bbplot)
+library(skimr)
+library(stats)
 setwd(".")
 getwd()
 ```
@@ -32,29 +34,99 @@ mlbpark$Opened <- mlbpark$Opened %>%
 mlbpark[, 6] <- lapply(mlbpark[, 6], 
                          function(x) as.double(as.character(x)))
 ```
+# 고유색 더하기
+```{r}
+mlb_color <- read_sheet('https://docs.google.com/spreadsheets/d/1BNosPtWPI9jFvc5Mro2mAWaKlV8R754w4uyfgOnyAuY/edit#gid=0')
+```
+```{r}
+skim(mlb_color$`Color 1`)
+n_distinct(mlb_color$`Color 1`)
+mlb_color%>% group_by(`Color 1`) %>%
+  summarize(n = n())
+```
+시카고 화이트삭스와 피츠버그 파이러츠의 팀 컬러가 검정색으로 겹친다는 것을 알 수 있다. 이를 해결하기 위하여 피츠버그를 두번째 팀컬러인 노란색으로 표현하기로 한다.
 
 ```{r}
-mlbpark %>% ggplot() +
-  geom_point(aes(x=Opened, y=Capacity)) +
+#피츠버그의 색을 노란색으로
+mlb_color[mlb_color$`MLB Team Name`=="Pittsburgh Pirates", "Color 1"] <-  "Yellow #FDB827"
+mlbcolor <- mlb_color %>% select(c(1:2)) %>%
+  rename("Team" = 1, "colorcode" = 2)
+```
+
+
+```{r}
+mlbcolor$colorcode <- gsub(".*#", "#", mlbcolor$colorcode)
+mlb <- mlbpark %>% left_join(mlbcolor, by="Team")
+mlbcol <- unlist(mlbcolor$colorcode, use.names = mlbcolor$Team)
+mlbc <- setNames(as.character(mlbcolor$colorcode), 
+                   as.character(mlbcolor$Team))
+```
+
+```{r}
+mlbc
+```
+  scale_fill_manual(values = as.character(df3$cat_cols))
+
+```{r}
+g1 <- mlb %>% ggplot() +
+  geom_point(aes(x=Opened, y=Capacity,, colour = factor(Team))) +
   scale_x_continuous(expand = c(0,0),
                      limits = c(1900, 2022),
                      breaks = seq(1910, 2022, by = 10)) +
   scale_y_continuous(expand = c(0,0),
                      limits = c(20000, 60000),
                      breaks = seq(20000, 60000, by = 5000)) +
-  labs(title="현재 쓰이는 MLB 구장의 건설년도와 수용인원")
+  labs(title="현재 쓰이는 MLB 구장의 건설년도와 수용인원") +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.position = "none") +
+  scale_colour_manual(values=c(mlbc))
 
-mlbpark %>% ggplot() +
+g1
+#colour = thematic::okabe_ito(8)[6],
+```
+```{r}
+cols <- c("8" = "red", "4" = "blue", "6" = "darkgreen", "10" = "orange")
+cols
+mlbc
+```
+
+
+```{r}
+cols <- c("8" = "red", "4" = "blue", "6" = "darkgreen", "10" = "orange")
+```
+
+
+
+
+```{r}
+g2 <- mlbpark %>% ggplot() +
   geom_point(aes(x=Opened, y=`Cost of Construction`, color=`Roof type`)) +
   scale_x_continuous(expand = c(0,0),
                      limits = c(1900, 2022),
                      breaks = seq(1900, 2022, by = 10)) +
+  scale_y_continuous(expand = c(0,0),
+                     limits = c(0, 2500),
+                     breaks = seq(0, 2500, by = 500),
+                     labels = c("0", "5000억", "1조", "1조5천억", "2조", "2조5천억\n($)")) +
   labs(title="현재 쓰이는 MLB 구장의 건설년도와 건설비용") +
   theme(legend.position = c(0.2, 0.7),
-        legend.background = element_rect(size=0.5, linetype="solid", 
-                                  colour ="darkblue"))
+        legend.background = element_rect(size=0.5, 
+                                         linetype="solid", 
+                                         colour ="darkblue"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+# guides(fill = guide_legend(nrow = 4, byrow = T))
+
+g2
+```
+```{r}
+ggsave("./mlb_cap.svg", g1)
+ggsave("./mlb_cost.svg", g2)
+
 ```
 
+finalise_plot(plot_name, source_name, save_filepath, width_pixels, height_pixels, logo_image_path)
 
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
