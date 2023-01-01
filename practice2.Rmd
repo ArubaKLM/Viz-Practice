@@ -1,0 +1,60 @@
+---
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(googlesheets4)
+library(base)
+library(bbplot)
+setwd(".")
+getwd()
+```
+
+```{r}
+mlbpark <- read_sheet('https://docs.google.com/spreadsheets/d/1WLSVxzZw6Y9koMwyBn8PJiQXFER2mfI2B7jlICjlwz0/edit#gid=0')
+as_tibble(mlbpark)
+```
+
+
+```{r}
+mlbpark$Capacity <- mlbpark$Capacity %>% 
+  str_replace("\\[.*", "") %>% 
+  str_replace(",", "") %>% 
+  as.integer()
+
+mlbpark$Team <- mlbpark$Team %>% 
+  str_replace("\\[.*", "") 
+mlbpark$Type <- mlbpark$Type %>% 
+  str_replace("\\[.*", "") 
+mlbpark$Opened <- mlbpark$Opened %>% 
+  str_replace("\\[.*", "")
+mlbpark[, 6] <- lapply(mlbpark[, 6], 
+                         function(x) as.double(as.character(x)))
+```
+
+```{r}
+mlbpark %>% ggplot() +
+  geom_point(aes(x=Opened, y=Capacity)) +
+  scale_x_continuous(expand = c(0,0),
+                     limits = c(1900, 2022),
+                     breaks = seq(1910, 2022, by = 10)) +
+  scale_y_continuous(expand = c(0,0),
+                     limits = c(20000, 60000),
+                     breaks = seq(20000, 60000, by = 5000)) +
+  labs(title="현재 쓰이는 MLB 구장의 건설년도와 수용인원")
+
+mlbpark %>% ggplot() +
+  geom_point(aes(x=Opened, y=`Cost of Construction`, color=`Roof type`)) +
+  scale_x_continuous(expand = c(0,0),
+                     limits = c(1900, 2022),
+                     breaks = seq(1900, 2022, by = 10)) +
+  labs(title="현재 쓰이는 MLB 구장의 건설년도와 건설비용") +
+  theme(legend.position = c(0.2, 0.7),
+        legend.background = element_rect(size=0.5, linetype="solid", 
+                                  colour ="darkblue"))
+```
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
