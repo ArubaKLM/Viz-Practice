@@ -1,0 +1,64 @@
+---
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load(dplyr, sf, mapview, readr, stringr, ggplot2, ggfx, giscoR, leaflet, leaflet.extras, electoral)
+```
+
+```{r}
+read.csv("./sidopop_2022_4.csv", header = FALSE) 
+```
+
+```{r}
+sidopop <- read.csv("./sidopop_2022_4.csv", header = TRUE)
+sidopop = sidopop[-1, -c(2:3)]
+colnames(sidopop) <- c("sido", "pop")
+sidopop[, 2] <- sidopop[, 2] %>% as.double()
+totalpop <- sidopop[1,2]
+sido_pop <- sidopop %>% mutate("인구비중" = pop/totalpop*100,
+                   "지역구253석" = pop/totalpop*253,
+                   "지역구300석" = pop/totalpop*300,
+                   "지역구320석" = pop/totalpop*320,
+                   "지역구360석" = pop/totalpop*360) %>%
+    mutate_if(is.numeric, round, digits = 2)
+DT::datatable(sido_pop)
+```
+
+
+```{r}
+sido_seat <- sidopop[-1, ] %>% mutate("인구비중" = pop/totalpop*100,
+                   "지역구253석" = seats_lr(sido, pop, 253, "hare"),
+                   "지역구300석" = seats_lr(sido, pop, 300, "hare"),
+                   "지역구320석" = seats_lr(sido, pop, 320, "hare"),
+                   "지역구360석" = seats_lr(sido, pop, 360, "hare")) %>%
+    mutate_if(is.numeric, round, digits = 2)
+```
+
+
+```{r}
+sido_seat_scen <- function(x) { 
+  seats_lr(sidopop[-1, ]$sido, sidopop[-1, ]$pop, n_seats =x, method="hare")
+}
+sido_seat_scen(253)
+sido_seat_scen(300)
+sido_seat_scen(320)
+sido_seat_scen(360)
+```
+
+
+```{r}
+DT::datatable(sido_seat)
+```
+
+
+```{r}
+totalpop/253
+totalpop/300
+totalpop/360
+totalpop/400
+totalpop/480
+```
+
+
+

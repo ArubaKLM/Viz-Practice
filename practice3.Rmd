@@ -1,0 +1,205 @@
+---
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+pacman::p_load(dplyr, sf, mapview, readr, stringr, ggplot2, ggfx, giscoR, leaflet, leaflet.extras)
+```
+
+```{r}
+mylist <- function(urlfile, iso3DF) {
+  
+  urlfile <- 'https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.csv'
+  
+  iso3DF <- read.csv(urlfile) %>%
+    filter(name %in% c("Japan", "Korea, Republic of", "Taiwan, Province of China")) %>%
+    select("alpha.3") %>%
+    rename(iso3 = alpha.3)
+  
+  return(iso3DF)
+}
+
+iso3DF <- mylist()
+```
+
+```{r}
+dir <- file.path(tempdir(), 'rail')
+dir.create(dir)
+
+downloadSHP <-  function(urls) {
+  urls <-  paste0("https://biogeo.ucdavis.edu/data/diva/rrd/",
+                iso3DF$iso3, "_rrd.zip")
+  
+  lapply(urls, function(url) download.file(url, file.path(dir, basename(url))))
+}
+
+downloadSHP()
+```
+```{r}
+unzipSHP <- function(urls) {
+  filenames <- list.files(dir, full.names=T)
+  lapply(filenames, unzip)
+}
+
+unzipSHP()
+```
+
+```{r}
+loadSHP <- function(SHPs, rails) {
+  SHPs <- list.files(pattern="_rails.*\\.shp$")
+  
+  rails <- lapply(SHPs, function(rail_shp) {
+    rail <- st_read(rail_shp) %>% 
+      st_transform(crs = 4326)
+    return(rail)
+  }) %>%
+    bind_rows()
+  
+  return(rails)
+}
+
+rails <- loadSHP()
+```
+```{r}
+japanmap <- function(japan) {
+  japan <- giscoR::gisco_get_countries(
+    year = "2016",
+    epsg = "4326",
+    resolution = "3",
+    country = "Japan"
+  )
+  
+  return(japan)
+}
+
+japan <- japanmap()
+```
+
+```{r}
+
+```
+
+
+```{r}
+crsLAEA <- "+proj=tmerc +lat_0=40 +lon_0=140.833333333333 +k=0.9999 +x_0=0 +y_0=0 +ellps=bessel +towgs84=-146.414,507.337,680.507,0,0,0,0 +units=m +no_defs +type=crs"
+
+get_bounding_box <- function(crsLONGLAT, bbox, new_prj, bb) {
+
+  crsLONGLAT <- "+proj=longlat +datum=WGS84 +no_defs"
+
+  bbox <- st_sfc(
+  st_polygon(list(cbind(
+    c(122, 147, 147, 122, 122), 
+    # x-coordinates (longitudes) of points A,B,C,D
+    c(22, 22, 46.5, 46.5, 22)     
+    # y-coordinates (latitudes) of points A,B,C,D
+    ))),
+  crs = crsLONGLAT)
+
+  new_prj <- st_transform(bbox, crs = crsLAEA)
+  bb <- st_bbox(new_prj)
+
+  return(bb)
+}
+```
+```{r}
+basemap <- leaflet(rails) %>%
+  # add different provider tiles
+  addProviderTiles(
+    "OpenStreetMap",
+    # give the layer a name
+    group = "OpenStreetMap"
+  ) %>%
+  addProviderTiles(
+    "Stamen.Toner",
+    group = "Stamen.Toner"
+  ) %>%
+  addProviderTiles(
+    "Stamen.Terrain",
+    group = "Stamen.Terrain"
+  ) %>%
+  addProviderTiles(
+    "Esri.WorldStreetMap",
+    group = "Esri.WorldStreetMap"
+  ) %>%
+  addProviderTiles(
+    "Wikimedia",
+    group = "Wikimedia"
+  ) %>%
+  addProviderTiles(
+    "CartoDB.Positron",
+    group = "CartoDB.Positron"
+  ) %>%
+  addProviderTiles(
+    "Esri.WorldImagery",
+    group = "Esri.WorldImagery"
+  ) %>%
+# add a layers control
+  addLayersControl(
+    baseGroups = c(
+      "OpenStreetMap", "Stamen.Toner",
+      "Stamen.Terrain", "Esri.WorldStreetMap",
+      "Wikimedia", "CartoDB.Positron", "Esri.WorldImagery"
+    ),
+    # position it on the topleft
+    position = "topleft"
+  )
+```
+
+
+```{r}
+factpal <- colorFactor(topo.colors(3), rails$ISO)
+basemap %>% 
+  addTiles() %>%
+  addPolylines(color = ~factpal(ISO))
+```
+
+
+```{r}
+get_railway_map <- function(p, bb) {
+
+        bb <- get_bounding_box()
+
+        p <- ggplot() +
+         with_outer_glow(
+                geom_sf(data=rails, color="#FF8DE9", size=0.1, fill=NA),
+                colour="#FF1493", sigma=15) +
+         geom_sf(data=japan, color="grey80", size=0.05, fill=NA) +
+         coord_sf(crs = crsLAEA, 
+             xlim = c(bb["xmin"], bb["xmax"]), 
+             ylim = c(bb["ymin"], bb["ymax"])) +
+         theme_minimal() +
+         theme(
+         axis.line = element_blank(),
+         axis.text.x = element_blank(),
+         axis.text.y = element_blank(),
+         axis.ticks = element_blank(),
+         axis.title.x = element_text(size=5, color="grey80", hjust=1, vjust=1, family = "mono"),
+         axis.title.y = element_blank(),
+         legend.position = "none",
+         panel.grid.major = element_line(color = "black", size = 0.2),
+         panel.grid.minor = element_blank(),
+         plot.title = element_text(face="bold", size=10, color="grey80", hjust=.5, family = "mono"),
+         plot.margin = unit(c(t=1, r=-2, b=-1, l=-2),"lines"),
+         plot.background = element_rect(fill = "black", color = NA), 
+         panel.background = element_rect(fill = "black", color = NA), 
+         legend.background = element_rect(fill = "black", color = NA),
+         panel.border = element_blank()) +
+         labs(x = "Japan Rail map\n Data: DIVA-GIS, https://www.diva-gis.org/", 
+                y = NULL, 
+                title = "Japan railways", 
+                subtitle = "", 
+                caption = "")
+
+        return(p)
+}
+
+p <- get_railway_map()
+```
+
+```{r}
+p
+```
+
+
+
