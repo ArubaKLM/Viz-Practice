@@ -68,5 +68,9 @@ rd_case
 rd_dead
 rd_casualty
 ```
+```{r}
+write.csv(rd, "./road_accident.csv", row.names=F, fileEncoding = 'cp949')
+```
+
 
 
