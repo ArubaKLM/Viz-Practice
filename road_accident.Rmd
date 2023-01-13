@@ -1,0 +1,72 @@
+---
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(DT)
+```
+
+```{r}
+Sys.getlocale()
+Sys.setlocale("LC_ALL","C")
+rd <- read.csv("./seoul_roadaccident.csv", header=TRUE, encoding = "UTF-8")
+Sys.setlocale("LC_ALL","Korean")
+rd
+```
+
+```{r}
+# 데이터 na값 제거
+colnames(rd)[1:5] <- c('합계', '자치구', '사고유형', '소계', '사고통계')
+names(rd) <- gsub("X", "", names(rd))
+rd
+# pivotlonger
+rd <- rd %>% pivot_longer(cols = c(`1988`: `2021`), 
+                    names_to = "year",
+                    values_to = "case")
+```
+
+
+```{r}
+rd$자치구 <- str_replace(rd$자치구, "소계", "서울특별시")
+rd <- rd %>% filter(year >= 2007)
+# 나머지 - 들은 사고건수가 0건임으로 이를 0으로 대체
+rd$case <- str_replace(rd$case, "-", "0")
+rd$case <- as.double(rd$case)
+
+colSums(is.na(rd))
+names(which(is.na(rd$case)))
+# 결측값이 존재하지 않는다
+```
+
+```{r}
+DT::datatable(rd)
+```
+
+
+```{r}
+rd_case <- rd %>% 
+  filter(사고통계 == "발생건수 (건)"& !자치구 == "서울특별시") %>% 
+  ggplot(aes(x=year, y=case, color=자치구, group=자치구)) +
+  geom_line() +
+  facet_wrap(~c(사고유형))
+
+rd_dead <- rd %>% 
+  filter(사고통계 == "사망자수 (명)") %>% 
+  ggplot(aes(x=year, y=case, color=자치구, group=자치구)) +
+  geom_line() +
+  facet_wrap(~c(사고유형))
+
+rd_casualty <- rd %>% 
+  filter(사고통계 == "부상자수 (명)"& !자치구 == "서울특별시") %>% 
+  ggplot(aes(x=year, y=case, color=자치구, group=자치구)) +
+  geom_line() +
+  facet_wrap(~c(사고유형))
+
+rd_case
+rd_dead
+rd_casualty
+```
+
+
