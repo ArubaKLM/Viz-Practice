@@ -68,17 +68,44 @@ rd_case
 rd_dead
 rd_casualty
 ```
+
+
 ## tidy in english version
 ```{r}
 rd_e <- rd[, c(-1,-4)]
 colnames(rd_e)[1:3] <- c("district", "category", "harm")
+unique(rd_e$district)
+```
 
+
+```{r}
+district_name <- unique(rd_e$district)
+district_code <- c("seoul", "jong", "jungg", "yong", 
+                   "sungd", "gwang", "dongd", "jungr", 
+                   "sungb", "gangb", "dob", "now", 
+                   "eun", "seod", "ma", 
+                   "yang", "gangs", "gur", "gum", 
+                   "yeong", "dongj", "gwan", 
+                   "seo", "gangn", "song", "gangd") 
+```
+
+
+```{r}
 # 영어로 표현 바꾸기
-rd_eng <- rd_e %>% transmute(district, category,
+rd_eng <- rd_e %>% transmute(district, 
+                             category = recode(category, "합계" = "total",
+                                               "차대사람" = "CtoP",
+                                               "차대차" ="CtoC",
+                                               "차량단독" = "CarOnly"),
                              harm = recode(harm, "발생건수 (건)" ="totalcase",
                                            "사망자수 (명)"="death",
                                            "부상자수 (명)"="injured"),
                              year, case)
+rd_eng$district <- district_code[match(rd_e$district, district_name)]
+```
+
+
+```{r}
 rd1 <- rd_eng %>% pivot_wider(names_from = year, values_from = case)
 ```
 
