@@ -111,7 +111,7 @@ rd1 <- rd_eng %>% pivot_wider(names_from = year, values_from = case)
 
 ```{r}
 write.csv(rd, "./road_accident.csv", row.names=F, fileEncoding = 'cp949')
-write.csv(rd1, "./road_accident_data.csv", row.names=F, fileEncoding = 'cp949')
+write.csv(rd1, "./road_accident_data.csv", row.names=F)
 ```
 
 
